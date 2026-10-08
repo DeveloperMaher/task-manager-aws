@@ -6,27 +6,42 @@ cd $APP_DIR
 
 echo "=== AfterInstall: Setting up Laravel ==="
 
-# ---------- Generate .env from environment variables ----------
+# ---------- Fetch config from SSM Parameter Store ----------
+PARAM_PREFIX="/task-manager/prod"
+REGION="eu-central-1"
+
+echo "Fetching configuration from SSM..."
+DB_HOST=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/DB_HOST" --query "Parameter.Value" --output text)
+DB_PORT=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/DB_PORT" --query "Parameter.Value" --output text)
+DB_DATABASE=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/DB_DATABASE" --query "Parameter.Value" --output text)
+DB_USERNAME=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/DB_USERNAME" --query "Parameter.Value" --output text)
+DB_PASSWORD=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/DB_PASSWORD" --with-decryption --query "Parameter.Value" --output text)
+REDIS_HOST=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/REDIS_HOST" --query "Parameter.Value" --output text)
+REDIS_PORT=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/REDIS_PORT" --query "Parameter.Value" --output text)
+AWS_BUCKET=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/AWS_BUCKET" --query "Parameter.Value" --output text)
+SNS_TOPIC_ARN=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/SNS_TOPIC_ARN" --query "Parameter.Value" --output text)
+
+# ---------- Generate .env from SSM values ----------
 cat > $APP_DIR/.env <<EOF
-APP_NAME="${APP_NAME:-Task Manager}"
-APP_ENV=${APP_ENV:-production}
+APP_NAME="Task Manager"
+APP_ENV=production
 APP_KEY=
-APP_DEBUG=${APP_DEBUG:-false}
-APP_URL=${APP_URL:-http://localhost}
+APP_DEBUG=false
+APP_URL=http://localhost
 
 LOG_CHANNEL=stack
 LOG_LEVEL=error
 
 DB_CONNECTION=mysql
 DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT:-3306}
-DB_DATABASE=${DB_DATABASE:-task_manager}
-DB_USERNAME=${DB_USERNAME:-admin}
+DB_PORT=${DB_PORT}
+DB_DATABASE=${DB_DATABASE}
+DB_USERNAME=${DB_USERNAME}
 DB_PASSWORD=${DB_PASSWORD}
 
 REDIS_CLIENT=predis
 REDIS_HOST=${REDIS_HOST}
-REDIS_PORT=${REDIS_PORT:-6379}
+REDIS_PORT=${REDIS_PORT}
 REDIS_PASSWORD=null
 
 SESSION_DRIVER=redis
@@ -39,7 +54,7 @@ CACHE_STORE=redis
 QUEUE_CONNECTION=redis
 FILESYSTEM_DISK=s3
 
-AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
+AWS_DEFAULT_REGION=${REGION}
 AWS_BUCKET=${AWS_BUCKET}
 AWS_USE_PATH_STYLE_ENDPOINT=false
 

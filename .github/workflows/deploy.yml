@@ -1,0 +1,87 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # manual trigger button
+
+permissions:
+  id-token: write     # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+  S3_BUCKET: task-manager-artifacts-maher
+  CODEDEPLOY_APP: task-manager-app
+  CODEDEPLOY_GROUP: task-manager-dg
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------- Build ----------
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, bcmath, curl, mysql, redis, zip, gd, intl
+          tools: composer
+
+      - name: Install Composer dependencies (no dev)
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      # ---------- Package ----------
+      - name: Create .env placeholder for build
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate --force
+
+      - name: Create deployment zip
+        run: |
+          zip -r deploy.zip . \
+            -x "*.git*" \
+            -x "node_modules/*" \
+            -x "tests/*" \
+            -x ".env" \
+            -x "storage/logs/*" \
+            -x "storage/framework/cache/*" \
+            -x "storage/framework/sessions/*" \
+            -x "storage/framework/views/*"
+
+      # ---------- AWS Auth via OIDC ----------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::317265268772:role/GitHubActions-Deploy-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ---------- Upload to S3 ----------
+      - name: Upload zip to S3
+        run: |
+          aws s3 cp deploy.zip \
+            s3://${{ env.S3_BUCKET }}/releases/${{ github.sha }}.zip
+
+      # ---------- Trigger CodeDeploy ----------
+      - name: Create CodeDeploy deployment
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APP }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_GROUP }} \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --s3-location bucket=${{ env.S3_BUCKET }},bundleType=zip,key=releases/${{ github.sha }}.zip \
+            --description "Deploy from GitHub Actions run ${{ github.run_number }}"
