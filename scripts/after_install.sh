@@ -39,7 +39,7 @@ SNS_TOPIC_ARN=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/S
 cat > $APP_DIR/.env <<EOF
 APP_NAME="Task Manager"
 APP_ENV=production
-APP_KEY=
+APP_KEY=$(aws ssm get-parameter --region $REGION --name "${PARAM_PREFIX}/APP_KEY" --with-decryption --query "Parameter.Value" --output text)
 APP_DEBUG=false
 APP_URL=http://localhost
 
@@ -92,11 +92,6 @@ sudo -u www-data COMPOSER_HOME=/tmp/composer composer install \
     --prefer-dist \
     --optimize-autoloader \
     --no-progress
-
-# ---------- App key ----------
-if ! grep -q "^APP_KEY=base64:" $APP_DIR/.env; then
-    sudo -u www-data php artisan key:generate --force
-fi
 
 # ---------- Caches (non-fatal if any fail) ----------
 sudo -u www-data php artisan config:cache || echo "config:cache failed"
