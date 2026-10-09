@@ -6,6 +6,14 @@ cd $APP_DIR
 
 echo "=== AfterInstall: Setting up Laravel ==="
 
+# ---------- Clear stale caches from previous deploys ----------
+rm -f $APP_DIR/bootstrap/cache/config.php
+rm -f $APP_DIR/bootstrap/cache/routes-v7.php
+rm -f $APP_DIR/bootstrap/cache/packages.php
+rm -f $APP_DIR/bootstrap/cache/services.php
+rm -rf $APP_DIR/storage/framework/views/*
+rm -rf $APP_DIR/storage/framework/cache/data/*
+
 # ---------- Fetch config from SSM Parameter Store ----------
 PARAM_PREFIX="/task-manager/prod"
 REGION="eu-central-1"
@@ -68,7 +76,7 @@ chown -R www-data:www-data $APP_DIR
 chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache 2>/dev/null || true
 
 # ---------- Composer install (no dev) ----------
-sudo -u www-data composer install \
+sudo -u www-data COMPOSER_HOME=/tmp/composer composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
@@ -80,10 +88,10 @@ if ! grep -q "^APP_KEY=base64:" $APP_DIR/.env; then
     sudo -u www-data php artisan key:generate --force
 fi
 
-# ---------- Caches ----------
-sudo -u www-data php artisan config:cache
-sudo -u www-data php artisan route:cache
-sudo -u www-data php artisan view:cache
+# ---------- Caches (non-fatal if any fail) ----------
+sudo -u www-data php artisan config:cache || echo "config:cache failed"
+sudo -u www-data php artisan route:cache || echo "route:cache failed"
+sudo -u www-data php artisan view:cache || echo "view:cache skipped"
 
 # ---------- Run migrations ----------
 sudo -u www-data php artisan migrate --force || echo "Migration failed (may retry on next deploy)"
