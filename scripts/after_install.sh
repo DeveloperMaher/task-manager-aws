@@ -5,6 +5,12 @@ APP_DIR=/var/www/html
 cd $APP_DIR
 
 echo "=== AfterInstall: Setting up Laravel ==="
+# ---------- Ensure Laravel runtime directories exist ----------
+mkdir -p $APP_DIR/storage/framework/views
+mkdir -p $APP_DIR/storage/framework/cache/data
+mkdir -p $APP_DIR/storage/framework/sessions
+mkdir -p $APP_DIR/storage/logs
+mkdir -p $APP_DIR/bootstrap/cache
 
 # ---------- Clear stale caches from previous deploys ----------
 rm -f $APP_DIR/bootstrap/cache/config.php
