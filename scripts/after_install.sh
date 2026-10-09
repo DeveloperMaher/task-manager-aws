@@ -75,6 +75,10 @@ EOF
 chown -R www-data:www-data $APP_DIR
 chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache 2>/dev/null || true
 
+# ---------- Recreate health endpoint (wiped by BeforeInstall) ----------
+echo "OK" > $APP_DIR/public/health
+chown www-data:www-data $APP_DIR/public/health
+
 # ---------- Composer install (no dev) ----------
 sudo -u www-data COMPOSER_HOME=/tmp/composer composer install \
     --no-dev \

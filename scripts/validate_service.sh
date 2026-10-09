@@ -5,7 +5,7 @@ echo "=== ValidateService: Checking app is healthy ==="
 
 # Wait up to 30s for PHP-FPM to bind
 for i in {1..6}; do
-    if systemctl is-active --quiet php8.2-fpm; then
+    if systemctl is-active --quiet php8.3-fpm; then
         echo "PHP-FPM is running."
         break
     fi
