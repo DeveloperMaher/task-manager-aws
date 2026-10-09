@@ -17,28 +17,39 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white">
                     @forelse($tasks as $task)
-                        <div class="border-b py-4 flex justify-between items-center">
-                            <div>
-                                <h3 class="font-bold text-lg">{{ $task->title }}</h3>
-                                <p class="text-sm text-gray-600">{{ $task->description }}</p>
+                    <div class="border-b py-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-lg">{{ $task->title }}</h3>
+                            <p class="text-sm text-gray-600">{{ $task->description }}</p>
+
+                            <div class="mt-2 flex items-center gap-2">
                                 <span class="text-xs px-2 py-1 rounded
                                     @if($task->status === 'done') bg-green-200
                                     @elseif($task->status === 'in_progress') bg-yellow-200
                                     @else bg-gray-200 @endif">
                                     {{ $task->status }}
                                 </span>
-                            </div>
-                            <div class="space-x-2">
-                                <a href="{{ route('tasks.edit', $task) }}" class="text-blue-600">Edit</a>
-                                <form action="{{ route('tasks.destroy', $task) }}" method="POST" class="inline">
-                                    @csrf @method('DELETE')
-                                    <button class="text-red-600" onclick="return confirm('Delete?')">Delete</button>
-                                </form>
+
+                                @if($task->attachment_path)
+                                    <a href="{{ Storage::disk('s3')->temporaryUrl($task->attachment_path, now()->addMinutes(10)) }}"
+                                    target="_blank"
+                                    class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200">
+                                        📎 Attachment
+                                    </a>
+                                @endif
                             </div>
                         </div>
-                    @empty
-                        <p class="text-gray-500">No tasks yet. Create your first one!</p>
-                    @endforelse
+                        <div class="space-x-2">
+                            <a href="{{ route('tasks.edit', $task) }}" class="text-blue-600">Edit</a>
+                            <form action="{{ route('tasks.destroy', $task) }}" method="POST" class="inline">
+                                @csrf @method('DELETE')
+                                <button class="text-red-600" onclick="return confirm('Delete?')">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-gray-500">No tasks yet. Create your first one!</p>
+                @endforelse
 
                     <div class="mt-4">{{ $tasks->links() }}</div>
                 </div>
